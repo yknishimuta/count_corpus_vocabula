@@ -1,0 +1,9 @@
+groups:
+  text:
+    files:
+      - input/*.txt
+
+out_dir: output
+language: la
+stanza_pkg: perseus
+cpu_only: true
