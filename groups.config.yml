@@ -1,9 +1,6 @@
-groups:
-  text:
-    files:
-      - input/*.txt
+cleaner_config: cleaners/config/sample.yml
 
 out_dir: output
 language: la
-stanza_pkg: perseus
+stanza_package: perseus
 cpu_only: true

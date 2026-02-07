@@ -1,12 +1,12 @@
 from __future__ import annotations
 from typing import Dict, Tuple
 from collections import Counter
-from nlpo_toolkit.nlp import count_nouns_streaming, load_vocab
+from nlpo_toolkit.nlp import count_nouns_streaming, load_vocab as _load_vocab
 
 def load_vocab(vocab_path) -> dict:
-    return load_vocab(vocab_path)
+    return _load_vocab(vocab_path)
 
-def count_group(text: str, nlp,  label: str = "") -> Tuple[Counter, Counter]:
+def count_group(text: str, nlp,  label: str = "") -> Counter:
     """Return counter for NOUN lemmas"""
     total = count_nouns_streaming(
         text,
