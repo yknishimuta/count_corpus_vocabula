@@ -190,7 +190,7 @@ def test_pipeline_mode_runs_cleaner_and_counts(tmp_path, monkeypatch):
         # return any opaque objects
         return object(), {"language": language, "package": stanza_package}
 
-    def fake_count_group(text, nlp, gname):
+    def fake_count_group(text, nlp, label="", exclude_lemmas=None, **kwargs):
         return Counter({"rosa": 2, "puella": 1})
 
     monkeypatch.setattr(mod, "build_pipeline", fake_build_pipeline)

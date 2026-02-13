@@ -12,7 +12,7 @@ if str(ROOT) not in sys.path:
 from count_corpus_vocabula.config import load_config
 from count_corpus_vocabula.io_utils import expand_globs, read_concat, save_counter_csv, write_summary
 from count_corpus_vocabula.nlp_utils import build_pipeline
-from count_corpus_vocabula.counters import count_group
+from count_corpus_vocabula.counters import count_group, load_exclude_list
 from count_corpus_vocabula.compose import compose_all
 from nlpo_toolkit.nlp import render_stanza_package_table
 
@@ -38,7 +38,7 @@ def _resolve_cleaner_output_dir(cleaner_config_path: Path) -> Path:
 
 def main() -> int:
     script_dir = Path(__file__).resolve().parent
-    config_path = script_dir / "groups.config.yml"
+    config_path = script_dir / "config" / "groups.config.yml"
 
     if not config_path.exists():
         raise FileNotFoundError(f"Config file not found: {config_path}")
@@ -82,10 +82,10 @@ def main() -> int:
 
     # language setting
     language = cfg.get("language", "la")
-    stanza_pkg = cfg.get("stanza_package", "perseus")
+    stanza_package = cfg.get("stanza_package", "perseus")
     cpu_only = bool(cfg.get("cpu_only", True))
 
-    nlp, package = build_pipeline(language=language, stanza_package=stanza_pkg, cpu_only=cpu_only)
+    nlp, package = build_pipeline(language=language, stanza_package=stanza_package, cpu_only=cpu_only)
 
     group_counts: Dict[str, Counter] = {}
 
@@ -96,7 +96,8 @@ def main() -> int:
             continue
         text = read_concat(files)
         print(f"[Processing] {gname}: {len(text):,} chars / {len(files)} files")
-        total = count_group(text, nlp, gname)
+        exclude = load_exclude_list("config/exclude_lemmas.txt")
+        total = count_group(text, nlp, label=gname, exclude_lemmas=exclude)
         group_counts[gname] = total
         save_counter_csv(out_dir / f"noun_frequency_{gname}.csv", total)
 

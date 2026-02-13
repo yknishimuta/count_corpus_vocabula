@@ -93,7 +93,7 @@ These paths will later be referenced in the YAML configuration.
 
 ### 2. Define corpus groups
 
-Create or edit `groups.config.yml`:
+Create or edit `config/groups.config.yml`:
 
 ```
 groups:

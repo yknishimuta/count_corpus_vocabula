@@ -2,10 +2,10 @@ from __future__ import annotations
 from typing import Optional, Dict
 from nlpo_toolkit.nlp import build_stanza_pipeline, PackageType
 
-def make_package(stanza_pkg: Optional[str]) -> Optional[Dict[str, str]]:
-    if stanza_pkg is None:
+def make_package(stanza_package: Optional[str]) -> Optional[Dict[str, str]]:
+    if stanza_package is None:
         return None
-    sp = stanza_pkg.lower()
+    sp = stanza_package.lower()
     if sp == "perseus":
         return {"tokenize": "perseus", "mwt": "perseus", "pos": "perseus", "lemma": "perseus"}
     return None
