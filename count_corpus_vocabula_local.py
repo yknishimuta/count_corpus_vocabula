@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 from pathlib import Path
-from typing import Dict, Mapping
+from typing import Dict, Mapping, List, Optional
 from collections import Counter
 
 import sys
@@ -14,10 +14,24 @@ from count_corpus_vocabula.io_utils import expand_globs, read_concat, save_count
 from count_corpus_vocabula.nlp_utils import build_pipeline
 from count_corpus_vocabula.counters import count_group, load_exclude_list
 from count_corpus_vocabula.compose import compose_all
-from nlpo_toolkit.nlp import render_stanza_package_table
+from count_corpus_vocabula.text_prep import one_sentence_per_line
 
-from nlpo_toolkit.latin.cleaners.config_loader import load_clean_config
+from nlpo_toolkit.nlp import render_stanza_package_table, build_sentence_splitter
 from nlpo_toolkit.latin.cleaners import run_clean_config as clean_mod
+from nlpo_toolkit.latin.cleaners.config_loader import load_clean_config
+
+def _expand_cleaned_dir_placeholders(patterns: list[str], cleaned_dir: Path | None) -> list[str]:
+    """
+    Expand '{cleaned_dir}' placeholder in glob patterns.
+
+    We use string replace (not str.format) to avoid KeyError when patterns contain
+    other braces (e.g., '{something_else}').
+    """
+    if cleaned_dir is None:
+        return list(patterns)
+
+    cd = str(cleaned_dir)
+    return [p.replace("{cleaned_dir}", cd) for p in patterns]
 
 def _resolve_cleaner_output_dir(cleaner_config_path: Path) -> Path:
     """
@@ -42,15 +56,6 @@ def run_dictcheck_if_enabled(
     group_counts: Mapping[str, Counter],
     script_dir: Path,
 ) -> None:
-    """
-    If cfg.dictcheck.enabled is true, split each noun_frequency_{group}.csv into
-    .known.csv / .unknown.csv using a wordlist.
-
-    Assumptions:
-      - noun_frequency csv is written by save_counter_csv(), i.e. columns are:
-        ["word", "frequency"]  (see io_utils.save_counter_csv)
-      - cfg structure: cfg["dictcheck"] = { enabled, wordlist, lemma_column?, count_column? }
-    """
     dc = cfg.get("dictcheck") or {}
     dc_enabled = bool(dc.get("enabled", False))
     if not dc_enabled:
@@ -70,7 +75,17 @@ def run_dictcheck_if_enabled(
     if not wordlist_path.exists():
         raise FileNotFoundError(f"Wordlist not found: {wordlist_path}")
 
-    # save_counter_csv writes header ["word","frequency"] (not lemma/count)
+    lemma_norm_raw = dc.get("lemma_normalize")
+    lemma_norm_path = None
+    if lemma_norm_raw:
+        p = Path(lemma_norm_raw)
+        if not p.is_absolute():
+            p = (script_dir / p).resolve()
+        if not p.exists():
+            raise FileNotFoundError(f"lemma_normalize file not found: {p}")
+        lemma_norm_path = p
+
+    # save_counter_csv writes header ["word","frequency"]
     lemma_col = dc.get("lemma_column") or "word"
     count_col = dc.get("count_column") or "frequency"
 
@@ -90,6 +105,7 @@ def run_dictcheck_if_enabled(
             lemma_col=lemma_col,
             count_col=count_col,
             normalize=True,
+            normalize_map_path=lemma_norm_path,
         )
         print(f"[DictCheck] {gname}: known={k} unknown={u} wordlist={wordlist_path}")
 
@@ -100,11 +116,9 @@ def main() -> int:
     if not config_path.exists():
         raise FileNotFoundError(f"Config file not found: {config_path}")
 
-    cfg = load_config(config_path)  # new design: groups/group required; cleaner_config rejected
+    cfg = load_config(config_path)
 
-    # ----------------------------
     # preprocess (optional)
-    # ----------------------------
     cleaned_dir: Path | None = None
     pp = cfg.get("preprocess")
     if pp and pp.get("kind") == "cleaner":
@@ -139,7 +153,8 @@ def main() -> int:
     stanza_package = cfg.get("stanza_package", "perseus")
     cpu_only = bool(cfg.get("cpu_only", True))
 
-    nlp, package = build_pipeline(language=language, stanza_package=stanza_package, cpu_only=cpu_only)
+    nlp, package = build_pipeline(language, stanza_package, cpu_only)
+    splitter_nlp = build_sentence_splitter(language, stanza_package=package, cpu_only=cpu_only)
 
     group_counts: Dict[str, Counter] = {}
 
@@ -148,11 +163,7 @@ def main() -> int:
     # ----------------------------
     for gname, gdef in cfg["groups"].items():
         patterns = gdef["files"]
-
-        # Optional placeholder expansion for cleaned_dir
-        # (recommended when preprocess is enabled)
-        if cleaned_dir is not None:
-            patterns = [p.format(cleaned_dir=str(cleaned_dir)) for p in patterns]
+        patterns = _expand_cleaned_dir_placeholders(patterns, cleaned_dir)
 
         files = expand_globs(patterns)
 
@@ -175,6 +186,7 @@ def main() -> int:
             continue
 
         text = read_concat(files)
+        text = one_sentence_per_line(text, splitter_nlp)
         print(f"[Processing] {gname}: {len(text):,} chars / {len(files)} files")
 
         exclude = load_exclude_list("config/exclude_lemmas.txt")

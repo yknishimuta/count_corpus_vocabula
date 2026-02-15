@@ -15,3 +15,4 @@ cpu_only: true
 dictcheck:
   enabled: true
   wordlist: data/wordlist/latin_words.txt
+  lemma_normalize: config/lemma_normalize.tsv

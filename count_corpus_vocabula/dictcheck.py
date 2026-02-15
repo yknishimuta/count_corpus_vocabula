@@ -24,6 +24,20 @@ def _dictcheck_key(s: str, *, normalize: bool) -> str:
         return ""
     return t
 
+def load_lemma_normalize_map(path: Path) -> dict[str, str]:
+    m: dict[str, str] = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        s = line.strip()
+        if not s or s.startswith("#"):
+            continue
+        parts = s.split("\t")
+        if len(parts) != 2:
+            raise ValueError(f"lemma normalize TSV must have 2 columns: {path} line={line!r}")
+        src, dst = parts[0].strip(), parts[1].strip()
+        if src and dst:
+            m[src] = dst
+    return m
+
 def split_frequency_csv(
     freq_csv: Path,
     wordlist_path: Path,
@@ -33,12 +47,17 @@ def split_frequency_csv(
     lemma_col: str = "lemma",
     count_col: str = "count",
     normalize: bool = True,
+    normalize_map_path: Path | None = None
 ) -> Tuple[int, int]:
     """
     Split noun_frequency CSV into known/unknown by checking membership in a wordlist.
 
     Returns: (known_rows, unknown_rows)
     """
+    lemma_map: dict[str, str] = {}
+    if normalize_map_path is not None:
+        lemma_map = load_lemma_normalize_map(normalize_map_path)
+
     raw_vocab: Set[str] = load_vocab(wordlist_path)
     vocab: Set[str] = set()
     for w in raw_vocab:
@@ -63,6 +82,7 @@ def split_frequency_csv(
             if not lemma:
                 continue
 
+            lemma = lemma_map.get(lemma, lemma)
             key = _dictcheck_key(lemma, normalize=normalize)
             if not key:
                 continue
