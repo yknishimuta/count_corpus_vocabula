@@ -55,7 +55,7 @@ def test_dictcheck_disabled_does_not_create_known_unknown(tmp_path, monkeypatch)
     monkeypatch.setattr(mod, "__file__", str(script_dir / "count_corpus_vocabula_local.py"))
 
     # Stub NLP build + counting so we don't download Stanza models
-    monkeypatch.setattr(mod, "build_pipeline", lambda **kwargs: (object(), {"package": "stub"}))
+    monkeypatch.setattr(mod, "build_pipeline", lambda *a, **k: (object(), "perseus"))
     monkeypatch.setattr(mod, "count_group", lambda text, nlp, **kwargs: Counter({"rosa": 2}))
     monkeypatch.setattr(mod, "render_stanza_package_table", lambda nlp, pkg: ["[stanza stub]"])
 
