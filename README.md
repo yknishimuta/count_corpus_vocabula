@@ -7,14 +7,12 @@ It is designed mainly for Latin text processing but can be adapted to other lang
 
 ## Features
 
-- Vocabulary counting for multiple corpora or text groups  
-- Support for lemmatized or surface-form counting (via external NLP tools such as Stanza)  
-- Group configuration via a YAML file (`groups.config.yml`)  
-- Batch processing through a command-line entry script  
-- Output of frequency tables in CSV formats
-- Two execution modes:
-  - Direct group-based counting
-  - Cleaner + automatic pipeline mode
+- Vocabulary counting for one or multiple corpora (**group** / **groups**)
+- Lemma-based counting via Stanza (default) and configurable language/package
+- Optional preprocessing step (**preprocess**) to run a cleaner before counting
+- Batch processing with a single command
+- Output frequency tables in CSV format and summary statistics
+- Simple exclusion list support via `config/exclude_lemmas.txt`
 
 ---
 
@@ -91,19 +89,42 @@ These paths will later be referenced in the YAML configuration.
 
 ------
 
-### 2. Define corpus groups
+### 2. Define groups (single or multiple)
 
-Create or edit `config/groups.config.yml`:
+Create or edit `config/groups.config.yml`.
+
+#### Option A: Single group (shortcut)
+
+```yaml
+group:
+  name: text
+  files:
+    - corpora/chapter1/*.txt
+
+out_dir: output
+language: la
+stanza_package: perseus
+cpu_only: true
+```
+
+#### Option B: Multiple groups
 
 ```
 groups:
-  - name: "Group1"
-    path: "/path/to/chapter1/*.txt"
-  - name: "Group2"
-    path: "/path/to/chapter2/*.txt"
+  chapter1:
+    files:
+      - corpora/chapter1/*.txt
+  chapter2:
+    files:
+      - corpora/chapter2/*.txt
+
+out_dir: output
+language: la
+stanza_package: perseus
+cpu_only: true
 ```
 
-Each group collects one or more text files using a glob pattern.
+Each group collects one or more text files using glob patterns.
 
 ------
 
@@ -115,42 +136,64 @@ python count_corpus_vocabula_local.py
 
 ------
 
-## Pipeline Mode
+## Preprocess (Cleaner)
 
-In addition to manually defining `groups`,
- `count_corpus_vocabula` can run in **pipeline mode**.
+You can optionally run a cleaner before counting by adding a `preprocess` block.
+This enables a single-command workflow:
 
-In this mode:
+1. Run cleaner
+2. Generate cleaned text files
+3. Count vocabulary on the selected cleaned groups
 
-1. A cleaner configuration is executed first
-2. Cleaned text files are generated
-3. A group is automatically created from the cleaned output
-4. Vocabulary counting is performed on the cleaned corpus
+### Example: cleaner + single group (all cleaned files)
 
-### Example `groups.config.yml` (Pipeline Mode)
+```yaml
+preprocess:
+  kind: cleaner
+  config: cleaners/config/sample.yml
 
-```
-cleaner_config: cleaners/config/sample.yml
+group:
+  name: cleaned_all
+  files:
+    - cleaned/*.txt
 
+out_dir: output/cleaned_vocab
 language: la
 stanza_package: perseus
 cpu_only: true
 ```
 
-If `groups` is not defined but `cleaner_config` is provided:
 
-- The cleaner will run first
-- All cleaned `.txt` files will be collected automatically
-- Default output directory will be:
+
+### Example: cleaner + multiple groups (split cleaned outputs)
 
 ```
-<cleaned_output>/vocab/
+preprocess:
+  kind: cleaner
+  config: cleaners/config/sample.yml
+
+groups:
+  left:
+    files:
+      - cleaned/ST-I_left_*.txt
+  right:
+    files:
+      - cleaned/ST-I_right_*.txt
+
+out_dir: output/cleaned_vocab
+language: la
+stanza_package: perseus
+cpu_only: true
 ```
 
-This allows a full raw→clean→count workflow with a single command:
+## Exclude list
 
-```
-python count_corpus_vocabula_local.py
+To exclude specific lemmas from the final frequency tables (e.g., `idest`),
+create `config/exclude_lemmas.txt` (one lemma per line):
+
+```txt
+idest
+ides
 ```
 
 ## License

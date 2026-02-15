@@ -1,6 +1,17 @@
-cleaner_config: cleaners/config/sample.yml
+preprocess:
+  kind: cleaner
+  config: config/cleaner.yml
+
+groups:
+  text:
+    files:
+      - "{cleaned_dir}/*.txt"
 
 out_dir: output
 language: la
 stanza_package: perseus
 cpu_only: true
+
+dictcheck:
+  enabled: true
+  wordlist: data/wordlist/latin_words.txt

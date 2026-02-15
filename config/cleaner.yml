@@ -1,0 +1,4 @@
+kind: corpus_corporum
+input: ../input
+output: ../cleaned
+output_filename_template: "{stem}.{index:02d}.cleaned.{ext}"
