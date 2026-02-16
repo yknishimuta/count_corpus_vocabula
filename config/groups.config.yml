@@ -16,3 +16,8 @@ dictcheck:
   enabled: true
   wordlist: data/wordlist/latin_words.txt
   lemma_normalize: config/lemma_normalize.tsv
+
+trace:
+  enabled: true
+  dir: trace
+  max_rows: 20000

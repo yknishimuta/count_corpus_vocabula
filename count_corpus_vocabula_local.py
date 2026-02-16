@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 from pathlib import Path
-from typing import Dict, Mapping, List, Optional
+from typing import Dict, Mapping, List, Optional, Any
 from collections import Counter
 
-import sys
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+import sys, re
 
 from count_corpus_vocabula.config import load_config
 from count_corpus_vocabula.io_utils import expand_globs, read_concat, save_counter_csv, write_summary
@@ -19,6 +16,12 @@ from count_corpus_vocabula.text_prep import one_sentence_per_line
 from nlpo_toolkit.nlp import render_stanza_package_table, build_sentence_splitter
 from nlpo_toolkit.latin.cleaners import run_clean_config as clean_mod
 from nlpo_toolkit.latin.cleaners.config_loader import load_clean_config
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+_SAFE_NAME_RE = re.compile(r"[^A-Za-z0-9._-]+")
 
 def _expand_cleaned_dir_placeholders(patterns: list[str], cleaned_dir: Path | None) -> list[str]:
     """
@@ -48,6 +51,30 @@ def _resolve_cleaner_output_dir(cleaner_config_path: Path) -> Path:
         out_path = (base_dir / out_path).resolve()
 
     return out_path
+
+def _safe_stem(s: str, default: str = "group") -> str:
+    s = (s or "").strip()
+    if not s:
+        return default
+    s = _SAFE_NAME_RE.sub("_", s)
+    s = s.strip("._-")
+    return s or default
+
+def _get_trace_kwargs(cfg: dict, out_dir: Path, label: str) -> dict:
+    tcfg = cfg.get("trace") or {}
+    enabled = bool(tcfg.get("enabled", False))
+    if not enabled:
+        return {}
+
+    trace_dir = Path(tcfg.get("dir", "trace"))
+    if not trace_dir.is_absolute():
+        trace_dir = out_dir / trace_dir
+
+    stem = _safe_stem(label, default="group")
+    tsv_path = trace_dir / f"{stem}.tsv"
+
+    max_rows = int(tcfg.get("max_rows", 0))
+    return {"trace_tsv": tsv_path, "trace_max_rows": max_rows}
 
 def run_dictcheck_if_enabled(
     *,
@@ -158,9 +185,10 @@ def main() -> int:
 
     group_counts: Dict[str, Counter] = {}
 
-    # ----------------------------
+ 
     # process groups (always present)
-    # ----------------------------
+    exclude = load_exclude_list("config/exclude_lemmas.txt")
+
     for gname, gdef in cfg["groups"].items():
         patterns = gdef["files"]
         patterns = _expand_cleaned_dir_placeholders(patterns, cleaned_dir)
@@ -189,11 +217,12 @@ def main() -> int:
         text = one_sentence_per_line(text, splitter_nlp)
         print(f"[Processing] {gname}: {len(text):,} chars / {len(files)} files")
 
-        exclude = load_exclude_list("config/exclude_lemmas.txt")
-        total = count_group(text, nlp, label=gname, exclude_lemmas=exclude)
+        trace_kwargs = _get_trace_kwargs(cfg, Path(out_dir), label=gname)
+        total = count_group(text, nlp, label=gname, exclude_lemmas=exclude, trace_kwargs=trace_kwargs)
 
         group_counts[gname] = total
-        save_counter_csv(out_dir / f"noun_frequency_{gname}.csv", total)
+        safe = _safe_stem(gname)
+        save_counter_csv(out_dir / f"noun_frequency_{safe}.csv", total)
 
     if len(group_counts) >= 2:
         all_counts = compose_all(group_counts)

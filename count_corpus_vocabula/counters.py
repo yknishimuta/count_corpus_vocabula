@@ -22,8 +22,8 @@ def filter_counter(counter: Counter, *, exclude: Iterable[str]) -> Counter:
     ex = {w.lower() for w in exclude}
     return Counter({k: v for k, v in counter.items() if k.lower() not in ex})
 
-def count_group(text: str, nlp,  label: str = "", exclude_lemmas: set[str] | None = None) -> Counter:
-    """Return counter for NOUN lemmas"""
+def count_group(text: str, nlp, label: str = "", exclude_lemmas: set[str] | None = None,
+               trace_kwargs: dict | None = None) -> Counter:
     total = count_nouns_streaming(
         text,
         nlp,
@@ -31,9 +31,10 @@ def count_group(text: str, nlp,  label: str = "", exclude_lemmas: set[str] | Non
         upos_targets={"NOUN"},
         chunk_chars=200_000,
         label=label,
+        **(trace_kwargs or {}),
     )
     if exclude_lemmas:
-        total = filter_counter(total, exclude=exclude_lemmas) 
+        total = filter_counter(total, exclude=exclude_lemmas)
     return total
 
 def merge_counters(a: Counter, b: Counter) -> Counter:
