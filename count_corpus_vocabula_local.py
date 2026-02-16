@@ -3,8 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Dict, Mapping, List, Optional, Any
 from collections import Counter
-
-import sys, re
+from datetime import datetime, timezone
+import sys, re, json, hashlib, platform, subprocess
 
 from count_corpus_vocabula.config import load_config
 from count_corpus_vocabula.io_utils import expand_globs, read_concat, save_counter_csv, write_summary
@@ -136,6 +136,122 @@ def run_dictcheck_if_enabled(
         )
         print(f"[DictCheck] {gname}: known={k} unknown={u} wordlist={wordlist_path}")
 
+def _sha256_head(path: Path, head_bytes: int = 1_048_576) -> str:
+    """Fast-ish fingerprint: sha256 of first N bytes (default 1MiB)."""
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        h.update(f.read(head_bytes))
+    return h.hexdigest()
+
+
+def _safe_run(cmd: List[str], cwd: Optional[Path] = None) -> Optional[str]:
+    try:
+        out = subprocess.check_output(cmd, cwd=str(cwd) if cwd else None, stderr=subprocess.DEVNULL)
+        return out.decode("utf-8", errors="replace").strip()
+    except Exception:
+        return None
+
+
+def collect_run_meta(
+    *,
+    out_dir: Path,
+    cfg: Dict[str, Any],
+    groups_files: Dict[str, List[str]],
+    stanza_nlp=None,
+    splitter_nlp=None,
+    hash_inputs: bool = False,
+) -> Dict[str, Any]:
+    """Collect reproducibility metadata for the current run."""
+    out_dir = out_dir.resolve()
+    repo_root = _safe_run(["git", "rev-parse", "--show-toplevel"])
+    git_commit = _safe_run(["git", "rev-parse", "HEAD"], cwd=Path(repo_root) if repo_root else None)
+    git_dirty = _safe_run(["git", "status", "--porcelain"], cwd=Path(repo_root) if repo_root else None)
+    git_branch = _safe_run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=Path(repo_root) if repo_root else None)
+
+    py_ver = platform.python_version()
+    versions = {"python": py_ver}
+
+    try:
+        import stanza
+        versions["stanza"] = getattr(stanza, "__version__", None)
+    except Exception:
+        versions["stanza"] = None
+
+    try:
+        import torch
+        versions["torch"] = getattr(torch, "__version__", None)
+    except Exception:
+        versions["torch"] = None
+
+    try:
+        import nlpo_toolkit
+        versions["nlpo_toolkit"] = getattr(nlpo_toolkit, "__version__", None)
+    except Exception:
+        versions["nlpo_toolkit"] = None
+
+    # Pipeline config snapshots
+    def _pipeline_cfg(nlp_obj):
+        cfg_ = getattr(nlp_obj, "config", None)
+        return cfg_ if isinstance(cfg_, dict) else None
+
+    meta: Dict[str, Any] = {
+        "created_at_utc": datetime.now(timezone.utc).isoformat(),
+        "out_dir": str(out_dir),
+        "platform": {
+            "system": platform.system(),
+            "release": platform.release(),
+            "machine": platform.machine(),
+        },
+        "git": {
+            "repo_root": repo_root,
+            "branch": git_branch,
+            "commit": git_commit,
+            "dirty": bool(git_dirty),
+        },
+        "versions": versions,
+        "pipelines": {
+            "main": _pipeline_cfg(stanza_nlp),
+            "splitter": _pipeline_cfg(splitter_nlp),
+        },
+        "config": cfg,
+        "inputs": {
+            "hash_inputs": hash_inputs,
+            "groups": {},
+        },
+    }
+
+    # Input file listing (with size/mtime; optional hash)
+    for gname, files in groups_files.items():
+        entries = []
+        for f in files:
+            p = Path(f)
+            try:
+                st = p.stat()
+                e = {
+                    "path": str(p),
+                    "size": st.st_size,
+                    "mtime": datetime.fromtimestamp(st.st_mtime, tz=timezone.utc).isoformat(),
+                }
+                if hash_inputs:
+                    e["sha256_head_1MiB"] = _sha256_head(p)
+                entries.append(e)
+            except FileNotFoundError:
+                entries.append({"path": str(p), "missing": True})
+        meta["inputs"]["groups"][gname] = {
+            "file_count": len(files),
+            "files": entries,
+        }
+
+    return meta
+
+
+def write_run_meta(meta: Dict[str, Any], out_dir: Path, filename: str = "run_meta.json") -> Path:
+    out_dir.mkdir(parents=True, exist_ok=True)
+    path = out_dir / filename
+    path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+    return path
+
+
 def main() -> int:
     script_dir = Path(__file__).resolve().parent
     config_path = script_dir / "config" / "groups.config.yml"
@@ -188,6 +304,7 @@ def main() -> int:
  
     # process groups (always present)
     exclude = load_exclude_list("config/exclude_lemmas.txt")
+    groups_files: dict[str, list[str]] = {}
 
     for gname, gdef in cfg["groups"].items():
         patterns = gdef["files"]
@@ -213,6 +330,8 @@ def main() -> int:
             print(f"[WARN] group '{gname}' matched no files; skipping")
             continue
 
+        groups_files[gname] = [str(f) for f in files]
+
         text = read_concat(files)
         text = one_sentence_per_line(text, splitter_nlp)
         print(f"[Processing] {gname}: {len(text):,} chars / {len(files)} files")
@@ -223,6 +342,16 @@ def main() -> int:
         group_counts[gname] = total
         safe = _safe_stem(gname)
         save_counter_csv(out_dir / f"noun_frequency_{safe}.csv", total)
+
+    meta = collect_run_meta(
+        out_dir=Path(out_dir),
+        cfg=cfg,
+        groups_files=groups_files,
+        stanza_nlp=nlp,
+        splitter_nlp=splitter_nlp,
+        hash_inputs=False,
+    )
+    write_run_meta(meta, Path(out_dir))
 
     if len(group_counts) >= 2:
         all_counts = compose_all(group_counts)
