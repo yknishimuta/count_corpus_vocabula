@@ -1,0 +1,8 @@
+# ref_tag: citation abbreviations (lowercase, without trailing dots)
+# These tokens are excluded from vocabulary frequency and recorded in ref_tag column.
+metaphys
+physic
+cap
+lib
+art
+q

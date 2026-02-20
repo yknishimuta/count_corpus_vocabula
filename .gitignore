@@ -37,7 +37,9 @@ input/*
 
 output/*
 !output/.gitkeep
+!output/trace/.gitkeep
 
 cleaned/*
 !cleaned/.gitkeep
 
+.claude/

@@ -12,6 +12,10 @@ language: la
 stanza_package: perseus
 cpu_only: true
 
+ref_tags:
+  enabled: true
+  patterns: config/ref_tags.txt
+
 dictcheck:
   enabled: true
   wordlist: data/wordlist/latin_words.txt
