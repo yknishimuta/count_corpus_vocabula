@@ -189,7 +189,7 @@ def test_count_nouns_streaming_trace_stops_writing_after_limit_but_keeps_countin
 
     assert trace_path.exists()
     lines = trace_path.read_text(encoding="utf-8").splitlines()
-    assert lines[0] == "label\tchunk\tsent_idx\ttoken_idx\tsentence\ttoken\tlemma\tupos\tglobal_row"
+    assert lines[0] == "label\tchunk\tsent_idx\ttoken_idx\tsentence\ttoken\tlemma\tupos\tref_tag\tglobal_row"
     assert len(lines) == 2
 
 
@@ -221,7 +221,7 @@ def test_count_group_writes_trace_when_trace_kwargs_given(tmp_path):
 
     assert trace_path.exists()
     lines = trace_path.read_text(encoding="utf-8").splitlines()
-    assert lines[0] == "label\tchunk\tsent_idx\ttoken_idx\tsentence\ttoken\tlemma\tupos\tglobal_row"
+    assert lines[0] == "label\tchunk\tsent_idx\ttoken_idx\tsentence\ttoken\tlemma\tupos\tref_tag\tglobal_row"
     assert len(lines) == 2
 
 

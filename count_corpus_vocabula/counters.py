@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Dict, Tuple
+from typing import Callable, Dict, Optional, Tuple
 from collections import Counter
 from typing import Iterable
 from pathlib import Path
@@ -22,8 +22,16 @@ def filter_counter(counter: Counter, *, exclude: Iterable[str]) -> Counter:
     ex = {w.lower() for w in exclude}
     return Counter({k: v for k, v in counter.items() if k.lower() not in ex})
 
-def count_group(text: str, nlp, label: str = "", exclude_lemmas: set[str] | None = None,
-               trace_kwargs: dict | None = None) -> Counter:
+def count_group(
+    text: str,
+    nlp,
+    label: str = "",
+    exclude_lemmas: set[str] | None = None,
+    trace_kwargs: dict | None = None,
+    *,
+    ref_tag_detector: Optional[Callable[[str], str]] = None,
+    ref_tag_counter: Optional[Counter] = None,
+) -> Counter:
     total = count_nouns_streaming(
         text,
         nlp,
@@ -31,6 +39,8 @@ def count_group(text: str, nlp, label: str = "", exclude_lemmas: set[str] | None
         upos_targets={"NOUN"},
         chunk_chars=200_000,
         label=label,
+        ref_tag_detector=ref_tag_detector,
+        ref_tag_counter=ref_tag_counter,
         **(trace_kwargs or {}),
     )
     if exclude_lemmas:

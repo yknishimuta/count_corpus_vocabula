@@ -12,6 +12,7 @@ from count_corpus_vocabula.nlp_utils import build_pipeline
 from count_corpus_vocabula.counters import count_group, load_exclude_list
 from count_corpus_vocabula.compose import compose_all
 from count_corpus_vocabula.text_prep import one_sentence_per_line
+from count_corpus_vocabula.ref_tags import load_ref_tag_set, build_ref_tag_detector
 
 from nlpo_toolkit.nlp import render_stanza_package_table, build_sentence_splitter
 from nlpo_toolkit.latin.cleaners import run_clean_config as clean_mod
@@ -301,7 +302,21 @@ def main() -> int:
 
     group_counts: Dict[str, Counter] = {}
 
- 
+    # ----------------------------
+    # ref_tags (optional)
+    # ----------------------------
+    ref_cfg = cfg.get("ref_tags") or {}
+    ref_detector = None
+    if ref_cfg.get("enabled"):
+        rt_path = Path(ref_cfg["patterns"])
+        if not rt_path.is_absolute():
+            rt_path = (script_dir / rt_path).resolve()
+        if not rt_path.exists():
+            raise FileNotFoundError(f"ref_tags patterns file not found: {rt_path}")
+        ref_tag_set = load_ref_tag_set(rt_path)
+        ref_detector = build_ref_tag_detector(ref_tag_set)
+        print(f"[RefTags] Loaded {len(ref_tag_set)} patterns from {rt_path}")
+
     # process groups (always present)
     exclude = load_exclude_list("config/exclude_lemmas.txt")
     groups_files: dict[str, list[str]] = {}
@@ -337,11 +352,21 @@ def main() -> int:
         print(f"[Processing] {gname}: {len(text):,} chars / {len(files)} files")
 
         trace_kwargs = _get_trace_kwargs(cfg, Path(out_dir), label=gname)
-        total = count_group(text, nlp, label=gname, exclude_lemmas=exclude, trace_kwargs=trace_kwargs)
+
+        ref_counter: Counter | None = Counter() if ref_detector else None
+        total = count_group(
+            text, nlp, label=gname, exclude_lemmas=exclude,
+            trace_kwargs=trace_kwargs,
+            ref_tag_detector=ref_detector,
+            ref_tag_counter=ref_counter,
+        )
 
         group_counts[gname] = total
         safe = _safe_stem(gname)
         save_counter_csv(out_dir / f"noun_frequency_{safe}.csv", total)
+        if ref_counter:
+            save_counter_csv(out_dir / f"ref_tag_frequency_{safe}.csv", ref_counter)
+            print(f"[RefTags] {gname}: {sum(ref_counter.values())} ref_tag tokens / {len(ref_counter)} types")
 
     meta = collect_run_meta(
         out_dir=Path(out_dir),
