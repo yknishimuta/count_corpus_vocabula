@@ -88,16 +88,16 @@ def test_dictcheck_enabled_creates_known_unknown(tmp_path, monkeypatch):
     assert known_csv.exists()
     assert unknown_csv.exists()
 
-    # base csv header is ["word","frequency"]
+    # base csv header is ["lemma","count"]
     rows = list(csv.reader(base_csv.open(encoding="utf-8")))
-    assert rows[0] == ["word", "frequency"]
+    assert rows[0] == ["lemma", "count"]
 
     # known should contain rosa, unknown should contain puella
     known_rows = list(csv.DictReader(known_csv.open(encoding="utf-8")))
     unknown_rows = list(csv.DictReader(unknown_csv.open(encoding="utf-8")))
 
-    assert [r["word"] for r in known_rows] == ["rosa"]
-    assert [r["word"] for r in unknown_rows] == ["puella"]
+    assert [r["lemma"] for r in known_rows] == ["rosa"]
+    assert [r["lemma"] for r in unknown_rows] == ["puella"]
 
 
 def test_dictcheck_enabled_requires_wordlist(tmp_path, monkeypatch):

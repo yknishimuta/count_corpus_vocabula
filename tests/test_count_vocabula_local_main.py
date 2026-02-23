@@ -108,5 +108,5 @@ def test_preprocess_cleaner_integration_fixed(tmp_path, monkeypatch):
     assert summary_path.exists()
 
     rows = list(csv.reader(csv_path.open(encoding="utf-8")))
-    assert rows[0] == ["word", "frequency"]
+    assert rows[0] == ["lemma", "count"]
     assert len(rows) >= 2
