@@ -25,3 +25,21 @@ trace:
   enabled: true
   dir: trace
   max_rows: 20000
+
+upos_targets:
+  - NOUN
+  - PROPN
+
+lemma_cache:
+  enabled: true
+  dir: .lemma_cache
+  use_manifest: true
+  # absolute or relative
+  manifest_key_mode: relative
+  lock_timeout_sec: 300.0
+  include_ref_tags_in_config_hash: true
+
+prune:
+  keep_days: 30
+  keep_files: 50000
+  lock_ttl_sec: 3600

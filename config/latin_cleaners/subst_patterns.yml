@@ -5,12 +5,110 @@ substitute_patterns:
     pattern: '\[\d+\]'
     repl: ''
 
-  - name: bible_ref_rom_abbrev
+  - name: bible_ref_rom
     enabled: true
-    pattern: '\bRom\.\b'
-    repl: ''
+    pattern: '\bRom\.(?=\s|$|,|;|:)'
+    repl: 'REF_BIBLE_ROMANS'
+    ref:
+      key: 'Bible:Romans'
+      author: 'Paulus'
+      work: 'Epistola ad Romanos'
 
-  - name: bible_ref_joan_abbrev
+  - name: bible_ref_matt
     enabled: true
-    pattern: '\Ioan\.\b'
-    repl: ''
+    pattern: '\bMatt\.(?=\s|$|,|;|:)'
+    repl: 'REF_BIBLE_MATT'
+    ref:
+      key: 'Bible:Matt'
+      author: 'Matthaeus'
+      work: 'Evangelium secundum Matthaeus'
+
+  - name: bible_ref_joan
+    enabled: true
+    pattern: '\bIoan\.(?=\s|$|,|;|:)'
+    repl: 'REF_BIBLE_JOAN'
+    ref:
+      key: 'Bible:John'
+      author: 'Ioannes'
+      work: 'Evangelium secundum Ioannem'
+
+  - name: bible_ref_hebr
+    enabled: true
+    pattern: '\bHebr\.(?=\s|$|,|;|:)'
+    repl: 'REF_BIBLE_HEBREWS'
+    ref:
+      key: 'Bible:Hebrews'
+      author: 'Paulus'
+      work: 'Epistola ad Hebraeos'
+
+  - name: aristotle_ref_metaphysica
+    enabled: true
+    pattern: '\bMetaphys\.(?=\s|$|,|;|:)'
+    repl: 'REF_WORK_ARISTOTLE_METAPHYSICA'
+    ref:
+      key: 'Aristotle:Metaphysica'
+      author: 'Aristotle'
+      work: 'Metaphysica'
+
+  - name: aristotle_ref_physica
+    enabled: true
+    pattern: '\bPhysic\.(?=\s|$|,|;|:)'
+    repl: 'REF_WORK_ARISTOTLE_PHYSICA'
+    ref:
+      key: 'Aristotle:Physica'
+      author: 'Aristotle'
+      work: 'Physica'
+
+  - name: boethius_ref_de_trinitate
+    enabled: true
+    pattern: '\bTrin\.(?=\s|$|,|;|:)'
+    repl: 'REF_WORK_BOETHIUS_DE_TRINITATE'
+    ref:
+      key: 'Boethius:De Trinitate'
+      author: 'Boethius'
+      work: 'De Trinitate'
+
+  - name: boethius_ref_de_trinitate
+    enabled: true
+    pattern: '\bTrin\.(?=\s|$|,|;|:)'
+    repl: 'REF_WORK_BOETHIUS_DE_TRINITATE'
+    ref:
+      key: 'Boethius:De Trinitate'
+      author: 'Boethius'
+      work: 'De Trinitate'
+
+  - name: augustinus_ref_de_civitate_dei
+    enabled: true
+    pattern: '\bde civitate Dei(?=\s|$|,|;|:|.)'
+    repl: 'REF_WORK_AUGUSTINUS_DE_CIVITATE_DEI'
+    ref:
+      key: 'Augustinus:De civitate Dei'
+      author: 'Augustinus'
+      work: 'De civitate Dei'
+
+  - name: hieronymus_ref_commentarii_in_osee
+    enabled: true
+    pattern: '\bOsee(?=\s|$|,|;|:|.)'
+    repl: 'REF_WORK_AUGUSTINUS_DE_CIVITATE_DEI'
+    ref:
+      key: 'Augustinus:De civitate Dei'
+      author: 'Augustinus'
+      work: 'De civitate Dei'
+
+  - name: citation_apostolus
+    enabled: true
+    pattern: '\bApostolus(?=\s|$|,|;|:)'
+    repl: 'REF_AUTHOR_PAUL'
+    ref:
+      key: 'Author:Paulus'
+      author: 'Paulus'
+      work: ''
+
+  - name: citation_hugo_victor
+    enabled: true
+    pattern: '\bHugo de sancto Victore(?=\s|$|,|;|:)'
+    repl: 'REF_AUTHOR_HUGO_VICTOR'
+    ref:
+      key: 'Author:HugoVictorinus'
+      author: 'Hugo de Sancto Victore'
+      work: ''

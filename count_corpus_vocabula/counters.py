@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Callable, Dict, Optional, Tuple
 from collections import Counter
-from typing import Iterable
+from typing import Iterable, Optional, Set
 from pathlib import Path
 from nlpo_toolkit.nlp import count_nouns_streaming, load_vocab as _load_vocab
 
@@ -29,14 +29,18 @@ def count_group(
     exclude_lemmas: set[str] | None = None,
     trace_kwargs: dict | None = None,
     *,
+    upos_targets: Optional[Set[str]] = None,
     ref_tag_detector: Optional[Callable[[str], str]] = None,
     ref_tag_counter: Optional[Counter] = None,
 ) -> Counter:
+    if upos_targets is None:
+        upos_targets = {"NOUN"}
+
     total = count_nouns_streaming(
         text,
         nlp,
         use_lemma=True,
-        upos_targets={"NOUN"},
+        upos_targets=upos_targets,
         chunk_chars=200_000,
         label=label,
         ref_tag_detector=ref_tag_detector,
