@@ -1,0 +1,16 @@
+substitute_patterns:
+
+  - name: inline_footnote_reference
+    enabled: true
+    pattern: '\[\d+\]'
+    repl: ''
+
+  - name: bible_ref_rom_abbrev
+    enabled: true
+    pattern: '\bRom\.\b'
+    repl: ''
+
+  - name: bible_ref_joan_abbrev
+    enabled: true
+    pattern: '\Ioan\.\b'
+    repl: ''

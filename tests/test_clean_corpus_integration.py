@@ -11,15 +11,16 @@ def test_run_clean_corpus_uses_external_rules_path(tmp_path: Path, monkeypatch):
     """
     Integration test from count_corpus side:
     - config.yml and rules.yml live under count_corpus (tmp_path)
-    - run_clean_corpus resolves rules_path relative to config.yml (NOT CWD)
+    - run_clean_corpus resolves rules_path and lexicon_map_path relative to config.yml
     - cleaned output is produced
     - ref_events.tsv is produced
+    - lexicon map is applied as the 3rd layer (ipsus -> ipse)
     """
 
     # count_corpus-like layout under tmp_path
     base = tmp_path / "count_corpus"
     cfg_dir = base / "config"
-    rules_dir = base / "config" / "latin_cleaners"
+    rules_dir = cfg_dir / "latin_cleaners"
     inp_dir = base / "input"
     out_dir = base / "output"
 
@@ -40,8 +41,16 @@ substitute_patterns:
         encoding="utf-8",
     )
 
-    # 2) input text (contains [12] so it matches the rule above)
-    (inp_dir / "a.txt").write_text("abc [12] def\n", encoding="utf-8")
+    # 1b) lexicon map tsv (externalized)
+    lexicon_map_path = rules_dir / "lexicon_map.tsv"
+    lexicon_map_path.write_text(
+        "# from\tto\n"
+        "ipsus\tipse\n",
+        encoding="utf-8",
+    )
+
+    # 2) input text: [12] should be removed by rules, and ipsus should become ipse by lexicon map
+    (inp_dir / "a.txt").write_text("abc ipsus [12] def\n", encoding="utf-8")
 
     # 3) clean config yaml that lives in count_corpus/config
     config_path = cfg_dir / "clean.yml"
@@ -54,11 +63,12 @@ output_filename_template: "{stem}.cleaned.{ext}"
 ref_tsv: ref_events.tsv
 doc_id_prefix: TEST
 rules_path: latin_cleaners/corpus_corporum.yml
+lexicon_map_path: latin_cleaners/lexicon_map.tsv
 """.lstrip(),
         encoding="utf-8",
     )
 
-    # IMPORTANT: change CWD to ensure rules_path is resolved from config.yml directory
+    # IMPORTANT: change CWD to ensure paths are resolved from config.yml dir, not CWD
     monkeypatch.chdir(tmp_path)
 
     # run
@@ -70,7 +80,13 @@ rules_path: latin_cleaners/corpus_corporum.yml
     assert cleaned.exists()
 
     out = cleaned.read_text(encoding="utf-8")
+
+    # rules_path substitution applied
     assert "[12]" not in out
+
+    # lexicon map applied (3rd layer)
+    assert "ipse" in out
+    assert "ipsus" not in out
 
     # ref_events.tsv should be written next to config file (cfg_dir)
     ref_tsv = cfg_dir / "ref_events.tsv"

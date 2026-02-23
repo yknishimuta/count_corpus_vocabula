@@ -2,3 +2,5 @@ kind: corpus_corporum
 input: ../input
 output: ../cleaned
 output_filename_template: "{stem}.cleaned.{ext}"
+lexicon_map_path: latin_cleaners/lexicon_map.tsv
+rules_path: latin_cleaners/subst_patterns.yml
