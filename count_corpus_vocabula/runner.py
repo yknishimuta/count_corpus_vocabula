@@ -9,6 +9,40 @@ from .outputs import write_frequency_csv
 from .preprocess import expand_cleaned_dir_placeholders, run_preprocess_if_needed
 
 
+def _resolve_analysis_unit(cfg: Dict[str, Any]) -> tuple[str, bool, tuple[str, str]]:
+    """
+    Returns:
+      - unit: "lemma" | "surface"
+      - use_lemma: bool (to pass into count_group_fn)
+      - csv_header: (col1, col2)
+    """
+    unit = str(cfg.get("analysis_unit", "lemma")).strip().lower()
+    if unit not in {"lemma", "surface"}:
+        raise ValueError("analysis_unit must be 'lemma' or 'surface'")
+
+    use_lemma = (unit == "lemma")
+
+    # default headers
+    if unit == "lemma":
+        header = ("lemma", "count")
+    else:
+        header = ("word", "frequency")
+
+    # optional override: csv_header: ["...", "..."]
+    hdr = cfg.get("csv_header")
+    if hdr is not None:
+        if (
+            isinstance(hdr, list)
+            and len(hdr) == 2
+            and all(isinstance(x, str) and x.strip() for x in hdr)
+        ):
+            header = (hdr[0], hdr[1])
+        else:
+            raise ValueError("csv_header must be a list[str] of length 2")
+
+    return unit, use_lemma, header
+
+
 def run(
     *,
     script_dir: Path,
@@ -48,6 +82,9 @@ def run(
     language = cfg.get("language", "la")
     stanza_package = cfg.get("stanza_package") or "perseus"
     cpu_only = bool(cfg.get("cpu_only", True))
+
+    # analysis unit (lemma / surface)
+    unit, use_lemma, csv_header = _resolve_analysis_unit(cfg)
 
     # build NLP
     nlp, package = build_pipeline_fn(language, stanza_package, cpu_only)
@@ -93,19 +130,29 @@ def run(
         else:
             joined = whole
 
-        c = count_group_fn(joined, nlp)
+        # NOTE: pass use_lemma so we can switch surface/lemma without changing counter implementation
+        c = count_group_fn(joined, nlp, use_lemma=use_lemma)
         group_counts[gname] = c
 
-        # base csv (lemma,count)
+        # base csv
         base = f"noun_frequency_{gname}"
-        write_frequency_csv(out_dir / f"{base}.csv", c)
+        write_frequency_csv(out_dir / f"{base}.csv", c, header=csv_header)
 
         # dictcheck
         dc = cfg.get("dictcheck") or {}
+        wordlist = dc.get("wordlist")
+
+        if bool(dc.get("enabled", False)) and not wordlist:
+            raise ValueError(
+                f"dictcheck.wordlist is required when dictcheck.enabled=true (analysis_unit={unit})"
+            )
+
         if bool(dc.get("enabled", False)):
             wordlist = dc.get("wordlist")
             if not wordlist:
-                raise ValueError("dictcheck.wordlist is required when dictcheck.enabled=true")
+                raise ValueError(
+                    f"dictcheck.wordlist is required when dictcheck.enabled=true (analysis_unit={unit})"
+                )
 
             wl_path = Path(str(wordlist))
             if not wl_path.is_absolute():
@@ -120,8 +167,16 @@ def run(
             known_c = Counter({w: n for (w, n) in c.items() if w in known})
             unknown_c = Counter({w: n for (w, n) in c.items() if w not in known})
 
-            write_frequency_csv(out_dir / f"noun_frequency_{gname}.known.csv", known_c)
-            write_frequency_csv(out_dir / f"noun_frequency_{gname}.unknown.csv", unknown_c)
+            write_frequency_csv(
+                out_dir / f"noun_frequency_{gname}.known.csv",
+                known_c,
+                header=csv_header,
+            )
+            write_frequency_csv(
+                out_dir / f"noun_frequency_{gname}.unknown.csv",
+                unknown_c,
+                header=csv_header,
+            )
 
     # summary.txt
     summary_lines: List[str] = []
@@ -129,6 +184,7 @@ def run(
     summary_lines.append("")
     summary_lines.append(f"language: {language}")
     summary_lines.append(f"stanza_package: {stanza_package}")
+    summary_lines.append(f"analysis_unit: {unit}")
     summary_lines.append("")
     summary_lines.extend(render_stanza_package_table_fn(nlp, stanza_package))
     summary_lines.append("")

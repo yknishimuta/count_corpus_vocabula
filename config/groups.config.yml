@@ -43,3 +43,5 @@ prune:
   keep_days: 30
   keep_files: 50000
   lock_ttl_sec: 3600
+# lemma or surface
+analysis_unit: lemma

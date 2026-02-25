@@ -19,15 +19,13 @@ class Config(TypedDict, total=False):
     # One of these may be provided in YAML; internally we normalize to "groups".
     group: Dict[str, Any]
     groups: Dict[str, GroupDef]
-
     preprocess: Dict[str, Any]
-
     out_dir: str
     vocab_path: Optional[str]
-
     language: str
     stanza_package: Optional[str]
     cpu_only: bool
+    analysis_unit: str
 
 
 def normalize_groups(cfg: dict) -> dict:
@@ -83,6 +81,10 @@ def _validate_preprocess(pp: Any) -> None:
     if not isinstance(cfg_path, str) or not cfg_path.strip():
         raise ValueError("'preprocess.config' must be a non-empty string path.")
 
+def _validate_analysis_unit(cfg: dict) -> None:
+    unit = cfg.get("analysis_unit", "lemma")
+    if unit not in {"lemma", "surface"}:
+        raise ValueError("analysis_unit must be 'lemma' or 'surface'")
 
 def load_config(path: Path) -> Config:
     if not path.exists():
@@ -105,7 +107,7 @@ def load_config(path: Path) -> Config:
     config_data = normalize_groups(config_data)
     _validate_groups(config_data["groups"])
 
-    # Validate preprocess (optional)
     _validate_preprocess(config_data.get("preprocess"))
+    _validate_analysis_unit(config_data)
 
     return config_data  # type: ignore[return-value]
