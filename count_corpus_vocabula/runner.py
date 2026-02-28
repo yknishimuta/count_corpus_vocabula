@@ -5,9 +5,8 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from .io_utils import expand_globs, read_concat
-from .outputs import write_frequency_csv
+from .outputs import write_frequency_csv, collect_runtime_environment, build_run_meta, write_run_meta
 from .preprocess import expand_cleaned_dir_placeholders, run_preprocess_if_needed
-
 
 def _resolve_analysis_unit(cfg: Dict[str, Any]) -> tuple[str, bool, tuple[str, str]]:
     """
@@ -192,5 +191,15 @@ def run(
         summary_lines.append(f"- group={gname} types={len(c)}")
 
     (out_dir / "summary.txt").write_text("\n".join(summary_lines) + "\n", encoding="utf-8")
+
+    meta = build_run_meta(
+        groups_files={g: [] for g in group_counts.keys()},
+        hash_inputs=False,
+    )
+
+    meta["analysis_unit"] = unit
+    meta["environment"] = collect_runtime_environment(script_dir)
+
+    write_run_meta(meta, out_dir)
 
     return 0
