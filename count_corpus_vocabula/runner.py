@@ -1,13 +1,22 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from collections import Counter
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from .io_utils import expand_globs, read_concat
-from .outputs import write_frequency_csv, collect_runtime_environment, build_run_meta, write_run_meta
+from .normalizer import normalize_text
+from .outputs import (
+    build_run_meta,
+    collect_runtime_environment,
+    write_frequency_csv,
+    write_run_meta,
+)
 from .preprocess import expand_cleaned_dir_placeholders, run_preprocess_if_needed
 from .ref_tags import load_ref_tag_patterns, strip_and_count_ref_tags
+
 
 def _resolve_analysis_unit(cfg: Dict[str, Any]) -> tuple[str, bool, tuple[str, str]]:
     """
@@ -42,6 +51,28 @@ def _resolve_analysis_unit(cfg: Dict[str, Any]) -> tuple[str, bool, tuple[str, s
 
     return unit, use_lemma, header
 
+def _format_normalization_kv(norm: dict) -> str:
+    if not isinstance(norm, dict) or not norm:
+        return "(none)"
+
+    keys_first = ["enabled", "casefold", "uv", "ij", "diacritics"]
+    parts: list[str] = []
+
+    for k in keys_first:
+        if k in norm:
+            parts.append(f"{k}={norm[k]}")
+
+    lig = norm.get("ligatures")
+    if isinstance(lig, dict) and lig:
+        lig_s = ",".join(f"{a}→{b}" for a, b in sorted(lig.items(), key=lambda x: x[0]))
+        parts.append(f"ligatures={lig_s}")
+
+    for k in sorted(norm.keys()):
+        if k in keys_first or k == "ligatures":
+            continue
+        parts.append(f"{k}={norm[k]}")
+
+    return " ".join(parts)
 
 def run(
     *,
@@ -101,12 +132,18 @@ def run(
         except Exception:
             splitter_nlp = None
 
+    # ref_tags setting is global (summary/meta needs it)
+    ref_cfg = cfg.get("ref_tags") or {}
+    ref_enabled = bool(ref_cfg.get("enabled", False))
+
     # groups
     groups = cfg.get("groups") or {}
     if not isinstance(groups, dict) or not groups:
         raise ValueError("config.groups must be a non-empty mapping")
 
     group_counts: Dict[str, Counter] = {}
+    group_ref_tags: Dict[str, Counter] = {}
+    groups_files: Dict[str, List[str]] = {}
 
     for gname, gdef in groups.items():
         if not isinstance(gdef, dict):
@@ -120,6 +157,8 @@ def run(
         patterns = expand_cleaned_dir_placeholders(patterns, cleaned_dir)
 
         files = expand_globs(patterns)  # List[Path]
+        groups_files[gname] = [str(p) for p in files]
+
         whole = read_concat(files)
 
         if splitter_nlp is not None:
@@ -129,22 +168,26 @@ def run(
                 joined = whole
         else:
             joined = whole
-        
-        ref_cfg = cfg.get("ref_tags") or {}
-        ref_enabled = bool(ref_cfg.get("enabled", False))
 
+        # normalization (config-driven)
+        joined = normalize_text(joined, cfg)
+
+        # ref_tags stripping/counting
         ref_counter = Counter()
         if ref_enabled:
             ref_file = ref_cfg.get("patterns") or ref_cfg.get("ref_tags_file")
             if not ref_file:
-                raise ValueError("ref_tags.patterns (or ref_tags.ref_tags_file) is required when ref_tags.enabled=true")
+                raise ValueError(
+                    "ref_tags.patterns (or ref_tags.ref_tags_file) is required when ref_tags.enabled=true"
+                )
 
             ref_path = Path(str(ref_file))
             if not ref_path.is_absolute():
                 ref_path = (script_dir / ref_path).resolve()
 
-            patterns = load_ref_tag_patterns(ref_path)
-            joined, ref_counter = strip_and_count_ref_tags(joined, patterns)
+            ref_patterns = load_ref_tag_patterns(ref_path)
+            joined, ref_counter = strip_and_count_ref_tags(joined, ref_patterns)
+            group_ref_tags[gname] = ref_counter
 
             # ref_tags csv (per group)
             write_frequency_csv(
@@ -171,12 +214,6 @@ def run(
             )
 
         if bool(dc.get("enabled", False)):
-            wordlist = dc.get("wordlist")
-            if not wordlist:
-                raise ValueError(
-                    f"dictcheck.wordlist is required when dictcheck.enabled=true (analysis_unit={unit})"
-                )
-
             wl_path = Path(str(wordlist))
             if not wl_path.is_absolute():
                 wl_path = (script_dir / wl_path).resolve()
@@ -201,29 +238,42 @@ def run(
                 header=csv_header,
             )
 
-    # summary.txt
+    # ---- summary.txt ----
     summary_lines: List[str] = []
     summary_lines.append("# Summary")
     summary_lines.append("")
     summary_lines.append(f"language: {language}")
     summary_lines.append(f"stanza_package: {stanza_package}")
     summary_lines.append(f"analysis_unit: {unit}")
+
+    # normalization policy (human-readable, stable)
+    norm = cfg.get("normalization", {}) or {}
+    summary_lines.append(f"normalization: {_format_normalization_kv(norm)}")
+
     summary_lines.append("")
     summary_lines.extend(render_stanza_package_table_fn(nlp, stanza_package))
     summary_lines.append("")
+
     if ref_enabled:
-        for gname, rc in group_ref_tags.items():
-            summary_lines.append(f"- group={gname} ref_tag_types={len(rc)} ref_tag_tokens={sum(rc.values())}")
+        for gn, rc in group_ref_tags.items():
+            summary_lines.append(
+                f"- group={gn} ref_tag_types={len(rc)} ref_tag_tokens={sum(rc.values())}"
+            )
 
     (out_dir / "summary.txt").write_text("\n".join(summary_lines) + "\n", encoding="utf-8")
 
+    # ---- run_meta.json ----
     meta = build_run_meta(
-        groups_files={g: [] for g in group_counts.keys()},
+        groups_files=groups_files,
         hash_inputs=False,
     )
 
     meta["analysis_unit"] = unit
     meta["environment"] = collect_runtime_environment(script_dir)
+
+    norm_canon = json.dumps(norm, ensure_ascii=False, sort_keys=True)
+    meta["normalization"] = norm
+    meta["normalization_hash_sha256"] = hashlib.sha256(norm_canon.encode("utf-8")).hexdigest()
 
     write_run_meta(meta, out_dir)
 

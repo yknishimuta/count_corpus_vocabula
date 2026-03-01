@@ -45,3 +45,11 @@ prune:
   lock_ttl_sec: 3600
 # lemma or surface
 analysis_unit: lemma
+
+normalization:
+  casefold: false
+  map_u_v: true
+  map_i_j: true
+  strip_diacritics: true
+  normalize_ligatures: true
+  unicode_nf: NFC
