@@ -112,3 +112,30 @@ substitute_patterns:
       key: 'Author:HugoVictorinus'
       author: 'Hugo de Sancto Victore'
       work: ''
+  
+  - name: citation_democritus
+    enabled: true
+    pattern: '\bDemocritus(?=\s|$|,|;|:|\.)'
+    repl: 'REF_AUTHOR_DEMOCRITUS'
+    ref:
+      key: 'Author:Democritus'
+      author: 'Democritus'
+      work: ''
+
+  - name: citation_epicurei
+    enabled: true
+    pattern: '\bEpicurei(?=\s|$|,|;|:|\.)'
+    repl: 'REF_AUTHOR_EPICUREI'
+    ref:
+      key: 'Author:Epicurus'
+      author: 'Epicurus'
+      work: ''
+
+  - name: citation_esau
+    enabled: true
+    pattern: '\bEsau(?=\s|$|,|;|:|\.)'
+    repl: 'REF_AUTHOR_ESAU'
+    ref:
+      key: 'Biblical:Esau'
+      author: 'Esau'
+      work: ''
