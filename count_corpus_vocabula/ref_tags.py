@@ -1,44 +1,79 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
+from typing import Iterable, List, Tuple
+
+from collections import Counter
 
 
-_STRIP_EDGE_PUNCT = re.compile(r"^[\W_]+|[\W_]+$")
+@dataclass(frozen=True)
+class RefTagPattern:
+    name: str
+    regex: str
+    compiled: re.Pattern
 
 
-def load_ref_tag_set(path: Path) -> set[str]:
-    """Load ref-tag abbreviations from a text file (one per line, # comments)."""
-    items: set[str] = set()
-    for line in path.read_text(encoding="utf-8").splitlines():
-        s = line.strip()
-        if not s or s.startswith("#"):
-            continue
-        items.add(s.lower())
-    return items
-
-
-def _normalize_for_match(key: str) -> str:
-    """Normalize a counter key for ref-tag matching.
-
-    Steps: strip whitespace → lowercase → remove edge punctuation → remove trailing dot.
+def load_ref_tag_patterns(path: Path) -> List[RefTagPattern]:
     """
-    t = key.strip().lower()
-    t = _STRIP_EDGE_PUNCT.sub("", t)
-    if t.endswith("."):
-        t = t[:-1]
-        t = _STRIP_EDGE_PUNCT.sub("", t)
-    return t
+    Load ref tag patterns from a text file.
+
+    Supported formats per line:
+      - name<TAB>regex
+      - name: regex
+      - regex   (auto-named as pattern_N)
+    """
+    txt = path.read_text(encoding="utf-8")
+    out: List[RefTagPattern] = []
+
+    auto_i = 1
+    for raw in txt.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+
+        name = ""
+        regex = ""
+
+        if "\t" in line:
+            a, b = line.split("\t", 1)
+            name, regex = a.strip(), b.strip()
+        elif ":" in line:
+            a, b = line.split(":", 1)
+            # avoid accidentally splitting "http://..."-like cases by requiring non-empty name
+            if a.strip():
+                name, regex = a.strip(), b.strip()
+            else:
+                regex = line
+        else:
+            regex = line
+
+        if not regex:
+            continue
+
+        if not name:
+            name = f"pattern_{auto_i}"
+            auto_i += 1
+
+        comp = re.compile(regex)
+        out.append(RefTagPattern(name=name, regex=regex, compiled=comp))
+
+    return out
 
 
-def build_ref_tag_detector(ref_tags: set[str]) -> Callable[[str], str]:
-    """Return a detector function: key -> matched tag name or empty string."""
+def strip_and_count_ref_tags(text: str, patterns: Iterable[RefTagPattern]) -> tuple[str, Counter]:
+    """
+    Remove ref tags from text and count them.
 
-    def _detect(key: str) -> str:
-        t = _normalize_for_match(key)
-        if t in ref_tags:
-            return t
-        return ""
+    Returns: (cleaned_text, tag_counter)
+    """
+    c = Counter()
+    cleaned = text
 
-    return _detect
+    for p in patterns:
+        cleaned, n = p.compiled.subn(" ", cleaned)
+        if n:
+            c[p.name] += int(n)
+
+    return cleaned, c

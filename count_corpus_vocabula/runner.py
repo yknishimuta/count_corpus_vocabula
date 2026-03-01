@@ -7,6 +7,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 from .io_utils import expand_globs, read_concat
 from .outputs import write_frequency_csv, collect_runtime_environment, build_run_meta, write_run_meta
 from .preprocess import expand_cleaned_dir_placeholders, run_preprocess_if_needed
+from .ref_tags import load_ref_tag_patterns, strip_and_count_ref_tags
 
 def _resolve_analysis_unit(cfg: Dict[str, Any]) -> tuple[str, bool, tuple[str, str]]:
     """
@@ -128,6 +129,29 @@ def run(
                 joined = whole
         else:
             joined = whole
+        
+        ref_cfg = cfg.get("ref_tags") or {}
+        ref_enabled = bool(ref_cfg.get("enabled", False))
+
+        ref_counter = Counter()
+        if ref_enabled:
+            ref_file = ref_cfg.get("patterns") or ref_cfg.get("ref_tags_file")
+            if not ref_file:
+                raise ValueError("ref_tags.patterns (or ref_tags.ref_tags_file) is required when ref_tags.enabled=true")
+
+            ref_path = Path(str(ref_file))
+            if not ref_path.is_absolute():
+                ref_path = (script_dir / ref_path).resolve()
+
+            patterns = load_ref_tag_patterns(ref_path)
+            joined, ref_counter = strip_and_count_ref_tags(joined, patterns)
+
+            # ref_tags csv (per group)
+            write_frequency_csv(
+                out_dir / f"ref_tags_{gname}.csv",
+                ref_counter,
+                header=("tag", "count"),
+            )
 
         # NOTE: pass use_lemma so we can switch surface/lemma without changing counter implementation
         c = count_group_fn(joined, nlp, use_lemma=use_lemma)
@@ -187,8 +211,9 @@ def run(
     summary_lines.append("")
     summary_lines.extend(render_stanza_package_table_fn(nlp, stanza_package))
     summary_lines.append("")
-    for gname, c in group_counts.items():
-        summary_lines.append(f"- group={gname} types={len(c)}")
+    if ref_enabled:
+        for gname, rc in group_ref_tags.items():
+            summary_lines.append(f"- group={gname} ref_tag_types={len(rc)} ref_tag_tokens={sum(rc.values())}")
 
     (out_dir / "summary.txt").write_text("\n".join(summary_lines) + "\n", encoding="utf-8")
 
