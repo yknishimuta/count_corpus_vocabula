@@ -195,9 +195,27 @@ def run(
                 ref_counter,
                 header=("tag", "count"),
             )
+        
+        # ---- trace (optional) ----
+        trace_cfg = cfg.get("trace") or {}
+        trace_kwargs: Dict[str, Any] = {}
+
+        if bool(trace_cfg.get("enabled", False)):
+            trace_path = Path(str(trace_cfg.get("path", out_dir / "trace.tsv")))
+            if not trace_path.is_absolute():
+                trace_path = (script_dir / trace_path).resolve()
+
+            trace_kwargs = {
+                "trace_tsv": trace_path,
+                "trace_max_rows": int(trace_cfg.get("max_rows", 0)),
+                "trace_only_keys": set(trace_cfg.get("only_keys", []) or []),
+                "trace_write_truncation_marker": bool(
+                    trace_cfg.get("write_truncation_marker", True)
+                ),
+            }
 
         # NOTE: pass use_lemma so we can switch surface/lemma without changing counter implementation
-        c = count_group_fn(joined, nlp, use_lemma=use_lemma)
+        c = count_group_fn(joined, nlp, use_lemma=use_lemma, **trace_kwargs)
         group_counts[gname] = c
 
         # base csv

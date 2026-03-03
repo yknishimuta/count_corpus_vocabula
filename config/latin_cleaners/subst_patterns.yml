@@ -139,3 +139,8 @@ substitute_patterns:
       key: 'Biblical:Esau'
       author: 'Esau'
       work: ''
+      
+  - name: drop_ref_tags
+    enabled: true
+    pattern: '\bREF_[A-Z]+_[A-Z0-9_]+\b'
+    repl: ''

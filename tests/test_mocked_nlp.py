@@ -153,7 +153,7 @@ def test_count_nouns_falls_back_to_tokens_when_words_missing():
     assert out == Counter({"rosa": 1})
 
 
-def test_count_nouns_streaming_trace_stops_writing_after_limit_but_keeps_counting(tmp_path):
+def test_count_nouns_streaming_trace_stops_writing_after_limit_but_keeps_counting(tmp_path: Path):
     nlp = DummyNLP(
         DummyDoc(
             sentences=[
@@ -180,6 +180,7 @@ def test_count_nouns_streaming_trace_stops_writing_after_limit_but_keeps_countin
         label="",
         trace_tsv=trace_path,
         trace_max_rows=1,
+        trace_write_truncation_marker=False,
     )
 
     assert len(nlp.calls) >= 2
@@ -188,7 +189,6 @@ def test_count_nouns_streaming_trace_stops_writing_after_limit_but_keeps_countin
     assert out["puella"] == len(nlp.calls)
 
     assert trace_path.exists()
-    lines = trace_path.read_text(encoding="utf-8").splitlines()
     lines = trace_path.read_text(encoding="utf-8").splitlines()
     header = lines[0].split("\t")
 
@@ -201,10 +201,12 @@ def test_count_nouns_streaming_trace_stops_writing_after_limit_but_keeps_countin
     assert "upos" in header
     assert "ref_tag" in header
     assert header[-1] == "global_row"
+
+    # header + 1 row (trace_max_rows=1)
     assert len(lines) == 2
 
 
-def test_count_group_writes_trace_when_trace_kwargs_given(tmp_path):
+def test_count_group_writes_trace_when_trace_kwargs_given(tmp_path: Path):
     nlp = DummyNLP(
         DummyDoc(
             sentences=[
@@ -225,7 +227,12 @@ def test_count_group_writes_trace_when_trace_kwargs_given(tmp_path):
         nlp,
         label="g1",
         exclude_lemmas=None,
-        trace_kwargs={"trace_tsv": trace_path, "trace_max_rows": 1},
+        trace_kwargs={
+            "trace_tsv": trace_path,
+            "trace_max_rows": 1,
+            # ★同上：marker を明示的に off
+            "trace_write_truncation_marker": False,
+        },
     )
 
     assert out == Counter({"rosa": 1})
@@ -243,10 +250,12 @@ def test_count_group_writes_trace_when_trace_kwargs_given(tmp_path):
     assert "upos" in header
     assert "ref_tag" in header
     assert header[-1] == "global_row"
+
+    # header + 1 row (trace_max_rows=1)
     assert len(lines) == 2
 
 
-def test_count_nouns_streaming_no_trace_does_not_create_tsv(tmp_path):
+def test_count_nouns_streaming_no_trace_does_not_create_tsv(tmp_path: Path):
     nlp = DummyNLP(
         DummyDoc(
             sentences=[

@@ -53,3 +53,12 @@ normalization:
   strip_diacritics: true
   normalize_ligatures: true
   unicode_nf: NFC
+
+trace:
+  enabled: true
+  #path: output/trace.tsv
+  max_rows: 50000
+  #only_keys:
+  #  - vod
+  #  - vus
+  write_truncation_marker: true
