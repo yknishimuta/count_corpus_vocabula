@@ -5,4 +5,3 @@ physic
 cap
 lib
 art
-q

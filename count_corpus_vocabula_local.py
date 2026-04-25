@@ -10,14 +10,17 @@ from typing import Any, Dict
 # Compatibility hooks for tests
 # ----------------------------
 
-# tests expect: mod.clean_mod.main to exist and be monkeypatchable
 try:
-    from count_corpus_vocabula import clean as clean_mod  # type: ignore
-except Exception:
+    from nlpo_toolkit.latin.cleaners import run_clean_corpus as clean_mod
+except Exception as e:
+    print("[DEBUG local] failed to import nlpo_toolkit cleaner:", repr(e))
     try:
-        from count_corpus_vocabula import cleaner as clean_mod  # type: ignore
+        from count_corpus_vocabula import clean as clean_mod  # type: ignore
     except Exception:
-        clean_mod = SimpleNamespace(main=lambda argv: 0)
+        try:
+            from count_corpus_vocabula import cleaner as clean_mod  # type: ignore
+        except Exception:
+            clean_mod = SimpleNamespace(main=lambda argv: 0)
 
 # tests expect: mod.load_config to exist and be monkeypatchable
 from count_corpus_vocabula.config import load_config  # noqa: F401

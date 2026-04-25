@@ -57,8 +57,8 @@ normalization:
 trace:
   enabled: true
   #path: output/trace.tsv
-  max_rows: 50000
-  #only_keys:
-  #  - vod
-  #  - vus
+  max_rows: 500000
+  only_keys:
+    - vod
+    - vus
   write_truncation_marker: true

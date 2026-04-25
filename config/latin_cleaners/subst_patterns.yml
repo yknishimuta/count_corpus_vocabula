@@ -144,3 +144,8 @@ substitute_patterns:
     enabled: true
     pattern: '\bREF_[A-Z]+_[A-Z0-9_]+\b'
     repl: ''
+
+  - name: norm_quod_uod
+    enabled: true
+    pattern: '\buod\b'
+    repl: 'quod'

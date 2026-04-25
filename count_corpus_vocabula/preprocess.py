@@ -57,10 +57,6 @@ def run_preprocess_if_needed(
         if not cleaner_config_path.exists():
             raise FileNotFoundError(f"Cleaner config file not found: {cleaner_config_path}")
 
-        print(f"[Cleaner] Running with config: {cleaner_config_path}")
         clean_mod.main([str(cleaner_config_path)])
-
         cleaned_dir = resolve_cleaner_output_dir(cleaner_config_path)
-        print(f"[Cleaner] Output directory (cleaned text): {cleaned_dir}")
-
     return cleaned_dir
