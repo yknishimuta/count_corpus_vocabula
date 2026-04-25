@@ -36,4 +36,7 @@ def normalize_text(text: str, cfg: Dict[str, Any]) -> str:
     if norm_cfg.get("strip_diacritics", False):
         text = strip_diacritics(text)
 
+    text = re.sub(r'([()\[\]{}“”‘’\'"«»])', r' \1 ', text)
+    text = re.sub(r'[ \t]+', ' ', text)
+
     return text

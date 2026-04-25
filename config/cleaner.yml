@@ -1,4 +1,4 @@
-kind: corpus_corporum
+kind: scholastic_text
 input: ../input
 output: ../cleaned
 output_filename_template: "{stem}.cleaned.{ext}"

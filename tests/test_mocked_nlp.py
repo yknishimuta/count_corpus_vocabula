@@ -9,18 +9,36 @@ import pytest
 from nlpo_toolkit.nlp import count_nouns, count_nouns_streaming
 from count_corpus_vocabula.counters import count_group
 
+from nlpo_toolkit.models import NLPDocument, NLPSentence, NLPToken
 
-# Minimal Stanza-like objects
+class DummyNLP:
+    """
+    NLPBackendインターフェースを満たすダミークラス。
+    初期化時に渡された NLPDocument をそのまま返す。
+    """
+    def __init__(self, doc: NLPDocument):
+        self._doc = doc
+        self.calls: list[str] = []
+
+    def __call__(self, text: str) -> NLPDocument:
+        self.calls.append(text)
+        return self._doc
+
 @dataclass
 class DummyWord:
     upos: str
     lemma: str | None = None
     text: str | None = None
+    start_char: int = 0
 
 
 @dataclass
 class DummySentence:
     words: list[DummyWord]
+    text: str | None = None
+    @property
+    def tokens(self):
+        return self.words
 
 
 @dataclass

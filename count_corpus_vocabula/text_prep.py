@@ -5,8 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Iterable, List, Optional
 
-
-_RE_HYPHEN_NL = re.compile(r"(\w)-\n(\w)")
+_RE_HYPHEN_NL = re.compile(r"(\w)[-\xad\u2010\u2011\u2012\u2013\u2014]\s*\n\s*(\w)")
 
 _RE_SINGLE_NL_IN_PARA = re.compile(r"(?<!\n)\n(?!\n)")
 

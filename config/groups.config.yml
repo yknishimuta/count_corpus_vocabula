@@ -11,6 +11,12 @@ out_dir: output
 language: la
 stanza_package: perseus
 cpu_only: true
+nlp:
+  backend: "transformers"
+  model_name: "pranaydeep/latin-bert"
+  # when backend is stanza
+  language: "la"
+  package: "perseus" 
 
 ref_tags:
   enabled: true
