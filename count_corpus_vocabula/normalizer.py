@@ -1,5 +1,5 @@
 from __future__ import annotations
-import unicodedata
+import unicodedata, re
 from typing import Dict, Any
 
 

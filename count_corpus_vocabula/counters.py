@@ -34,6 +34,7 @@ def count_group(
     upos_targets: Optional[Set[str]] = None,
     ref_tag_detector: Optional[Callable[[str], str]] = None,
     ref_tag_counter: Optional[Counter] = None,
+    min_token_length: int = 0,
 ) -> Counter:
     if upos_targets is None:
         upos_targets = {"NOUN"}
@@ -49,6 +50,7 @@ def count_group(
         label=label,
         ref_tag_detector=ref_tag_detector,
         ref_tag_counter=ref_tag_counter,
+        min_token_length=min_token_length,
         **tk,
     )
 

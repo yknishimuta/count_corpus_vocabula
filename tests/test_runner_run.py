@@ -39,7 +39,7 @@ def test_run_minimal_success(tmp_path: Path, monkeypatch):
     def build_pipeline_fn(language, stanza_package, cpu_only):
         return object(), stanza_package
 
-    def count_group_fn(text, nlp, use_lemma=True):
+    def count_group_fn(text, nlp, use_lemma=True, upos_targets=None, **kwargs):
         assert text  # joined
         return Counter({"deus": 2, "angelus": 1})
 
@@ -111,7 +111,7 @@ def test_run_analysis_unit_surface_passes_use_lemma_false(tmp_path: Path, monkey
     monkeypatch.setattr(runner_mod, "write_frequency_csv", lambda *a, **k: None)
 
     seen = {}
-    def count_group_fn(text, nlp, use_lemma=True):
+    def count_group_fn(text, nlp, use_lemma=True, **kwargs):
         seen["use_lemma"] = use_lemma
         return Counter({"X": 1})
 
@@ -137,7 +137,7 @@ def test_run_dictcheck_requires_wordlist(tmp_path: Path, monkeypatch):
         return {
             "out_dir": "output",
             "groups": {"g": {"files": ["a.txt"]}},
-            "dictcheck": {"enabled": True},  # wordlistなし
+            "dictcheck": {"enabled": True},
         }
 
     monkeypatch.setattr(runner_mod, "run_preprocess_if_needed", lambda **kwargs: None)

@@ -136,6 +136,9 @@ def run(
     ref_cfg = cfg.get("ref_tags") or {}
     ref_enabled = bool(ref_cfg.get("enabled", False))
 
+    filters_cfg = cfg.get("filters") or {}
+    min_token_length = int(filters_cfg.get("min_token_length", 0))
+
     # groups
     groups = cfg.get("groups") or {}
     if not isinstance(groups, dict) or not groups:
@@ -214,8 +217,7 @@ def run(
                 ),
             }
 
-        # NOTE: pass use_lemma so we can switch surface/lemma without changing counter implementation
-        c = count_group_fn(joined, nlp, use_lemma=use_lemma, **trace_kwargs)
+        c = count_group_fn(joined, nlp, use_lemma=use_lemma, min_token_length=min_token_length, **trace_kwargs)
         group_counts[gname] = c
 
         # base csv

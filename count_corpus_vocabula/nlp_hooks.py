@@ -41,6 +41,7 @@ def count_group(text: str, nlp, **kwargs) -> Counter:
 
     chunk_chars = int(kwargs.get("chunk_chars", 200_000))
     label = str(kwargs.get("label", ""))
+    min_token_length = int(kwargs.get("min_token_length", 0))
 
     ref_tag_detector = kwargs.get("ref_tag_detector")
     ref_tag_counter = kwargs.get("ref_tag_counter")
@@ -73,6 +74,7 @@ def count_group(text: str, nlp, **kwargs) -> Counter:
         trace_tsv=trace_tsv,
         trace_max_rows=trace_max_rows,
         trace_only_keys=trace_only_keys,
+        min_token_length=min_token_length,
         trace_write_truncation_marker=trace_write_truncation_marker,
     )
 

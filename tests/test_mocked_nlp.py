@@ -82,14 +82,14 @@ def test_count_nouns_lemma_lowercase_and_upos_filter():
                         DummyWord(upos="VERB", lemma="amo", text="amat"),
                         DummyWord(upos="NOUN", lemma="Rosa", text="rosam"),
                         DummyWord(upos="ADJ", lemma="pulcher", text="pulchra"),
-                        DummyWord(upos="NOUN", lemma=None, text="LIBER"),  # lemma無し→textへfallback
+                        DummyWord(upos="NOUN", lemma=None, text="LIBER"),
                     ]
                 )
             ]
         )
     )
 
-    out = count_nouns("whatever", nlp, use_lemma=True, upos_targets={"NOUN"})
+    out = count_nouns("whatever", nlp, use_lemma=True, upos_targets={"NOUN"}, min_token_length=0)
     assert out == Counter({"puella": 1, "rosa": 1, "liber": 1})
 
 
@@ -127,6 +127,8 @@ def test_count_nouns_streaming_calls_nlp_multiple_times():
         upos_targets={"NOUN"},
         chunk_chars=20,
         label="",
+        min_token_length=0,
+        
     )
 
     assert out["rosa"] >= 1
@@ -167,7 +169,7 @@ def test_count_nouns_falls_back_to_tokens_when_words_missing():
         )
     )
 
-    out = count_nouns("whatever", nlp, use_lemma=True, upos_targets={"NOUN"})
+    out = count_nouns("whatever", nlp, use_lemma=True, upos_targets={"NOUN"}, min_token_length=0)
     assert out == Counter({"rosa": 1})
 
 
@@ -199,6 +201,7 @@ def test_count_nouns_streaming_trace_stops_writing_after_limit_but_keeps_countin
         trace_tsv=trace_path,
         trace_max_rows=1,
         trace_write_truncation_marker=False,
+        min_token_length=0,
     )
 
     assert len(nlp.calls) >= 2

@@ -68,3 +68,6 @@ trace:
     - vod
     - vus
   write_truncation_marker: true
+
+filter:
+  min_token_length: 2
