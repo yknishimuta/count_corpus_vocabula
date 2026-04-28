@@ -69,5 +69,7 @@ trace:
     - vus
   write_truncation_marker: true
 
-filter:
+filters:
   min_token_length: 2
+  drop_roman_numerals: true
+  roman_exception_files: config/roman_numeral_exceptions.txt

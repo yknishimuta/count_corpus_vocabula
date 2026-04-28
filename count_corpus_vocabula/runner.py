@@ -138,6 +138,10 @@ def run(
 
     filters_cfg = cfg.get("filters") or {}
     min_token_length = int(filters_cfg.get("min_token_length", 0))
+    drop_roman_numerals = bool(filters_cfg.get("drop_roman_numerals", False))
+    roman_exceptions_file = filters_cfg.get("roman_exceptions_file")
+    if roman_exceptions_file:
+        roman_exceptions_file = (script_dir / Path(roman_exceptions_file)).resolve()
 
     # groups
     groups = cfg.get("groups") or {}
@@ -217,7 +221,7 @@ def run(
                 ),
             }
 
-        c = count_group_fn(joined, nlp, use_lemma=use_lemma, min_token_length=min_token_length, **trace_kwargs)
+        c = count_group_fn(joined, nlp, use_lemma=use_lemma, min_token_length=min_token_length, drop_roman_numerals=drop_roman_numerals, roman_exceptions_file=roman_exceptions_file, **trace_kwargs)
         group_counts[gname] = c
 
         # base csv

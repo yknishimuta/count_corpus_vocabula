@@ -12,14 +12,10 @@ _STRIP_RE = re.compile(
     rf"[{re.escape(string.punctuation)}“”‘’«»…—–\-­]+$"
 )
 
-_ROMAN_RE = re.compile(r"^(m{0,4}(cm|cd|d?c{0,3})(xc|xl|l?x{0,3})(ix|iv|v?i{0,3}))$", re.I)
-
 def _dictcheck_key(s: str, *, normalize: bool) -> str:
     t = s.strip()
     t = _STRIP_RE.sub("", t)
     t = normalize_token(t) if normalize else t
-    if _ROMAN_RE.fullmatch(t):
-        return ""
     if len(t) < 2 or (not t.isalpha()):
         return ""
     return t
